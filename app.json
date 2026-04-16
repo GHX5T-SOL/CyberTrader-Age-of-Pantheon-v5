@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "CyberTrader: Age of Pantheon",
+    "slug": "cybertrader-age-of-pantheon",
+    "scheme": "cybertrader",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

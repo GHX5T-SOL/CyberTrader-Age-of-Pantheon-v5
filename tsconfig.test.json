@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": ".test-dist",
+    "rootDir": ".",
+    "module": "Node16",
+    "moduleResolution": "node16",
+    "target": "ES2020",
+    "noEmit": false,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/game/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

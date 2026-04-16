@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+.test-dist/
+*.log
+.web-serve*.log
+.DS_Store
+android/
+ios/

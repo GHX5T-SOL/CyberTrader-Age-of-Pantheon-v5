@@ -1,0 +1,531 @@
+import * as Haptics from "expo-haptics";
+import React, { PropsWithChildren, useMemo } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle
+} from "react-native";
+import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import { COMMODITIES } from "@/game/constants";
+import { getCommodity } from "@/game/engine";
+import type { CommodityMarketState } from "@/game/types";
+import { colors, glow, radii, spacing } from "./theme";
+
+const mono = Platform.select({ ios: "Courier", android: "monospace", default: "monospace" });
+
+export function DeckText({
+  children,
+  style,
+  tone = "normal",
+  numberOfLines
+}: PropsWithChildren<{ style?: StyleProp<TextStyle>; tone?: keyof typeof toneStyles; numberOfLines?: number }>) {
+  return (
+    <Text numberOfLines={numberOfLines} style={[styles.text, toneStyles[tone], style]}>
+      {children}
+    </Text>
+  );
+}
+
+export function Panel({
+  title,
+  children,
+  style,
+  danger,
+  active,
+  locked
+}: PropsWithChildren<{
+  title?: string;
+  style?: StyleProp<ViewStyle>;
+  danger?: boolean;
+  active?: boolean;
+  locked?: boolean;
+}>) {
+  return (
+    <View
+      style={[
+        styles.panel,
+        active && styles.panelActive,
+        danger && styles.panelDanger,
+        locked && styles.panelLocked,
+        style
+      ]}
+    >
+      {title ? <DeckText tone={danger ? "danger" : active ? "cyan" : "muted"} style={styles.panelTitle}>{title}</DeckText> : null}
+      {children}
+    </View>
+  );
+}
+
+export function BracketButton({
+  label,
+  onPress,
+  disabled,
+  tone = "normal",
+  style
+}: {
+  label: string;
+  onPress?: () => void;
+  disabled?: boolean;
+  tone?: "normal" | "primary" | "danger" | "amber";
+  style?: StyleProp<ViewStyle>;
+}) {
+  async function press() {
+    if (disabled) {
+      return;
+    }
+    await Haptics.selectionAsync().catch(() => undefined);
+    onPress?.();
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={press}
+      style={({ pressed }) => [
+        styles.button,
+        tone === "primary" && styles.buttonPrimary,
+        tone === "danger" && styles.buttonDanger,
+        tone === "amber" && styles.buttonAmber,
+        disabled && styles.buttonDisabled,
+        pressed && !disabled && styles.buttonPressed,
+        style
+      ]}
+    >
+      <DeckText
+        style={[
+          styles.buttonText,
+          tone === "primary" && styles.buttonTextPrimary,
+          tone === "danger" && styles.buttonTextDanger,
+          tone === "amber" && styles.buttonTextAmber,
+          disabled && styles.buttonTextDisabled
+        ]}
+      >
+        {label}
+      </DeckText>
+    </Pressable>
+  );
+}
+
+export function Chip({ label, tone = "normal" }: { label: string; tone?: keyof typeof toneStyles }) {
+  return (
+    <View style={styles.chip}>
+      <DeckText tone={tone} style={styles.chipText}>{label}</DeckText>
+    </View>
+  );
+}
+
+export function Meter({
+  label,
+  value,
+  max = 100,
+  tone = "normal"
+}: {
+  label: string;
+  value: number;
+  max?: number;
+  tone?: keyof typeof toneStyles;
+}) {
+  const slots = 8;
+  const filled = Math.max(0, Math.min(slots, Math.round((value / max) * slots)));
+  return (
+    <View style={styles.meter}>
+      <DeckText tone="muted" style={styles.meterLabel}>{label}</DeckText>
+      <DeckText tone={tone} style={styles.meterBar}>{"|".repeat(filled)}{".".repeat(slots - filled)}</DeckText>
+      <DeckText tone="white" style={styles.meterValue}>{Math.round(value)}</DeckText>
+    </View>
+  );
+}
+
+export function MetricOrb({
+  label,
+  value,
+  suffix,
+  percent,
+  tone = colors.cyan
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  percent: number;
+  tone?: string;
+}) {
+  const size = 118;
+  const stroke = 6;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - Math.max(0, Math.min(percent, 1)));
+
+  return (
+    <View style={styles.orb}>
+      <Svg width={size} height={size}>
+        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={colors.lineSoft} strokeWidth={stroke} fill="transparent" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={tone}
+          strokeWidth={stroke}
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          fill="transparent"
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <View style={styles.orbText}>
+        <DeckText style={[styles.orbValue, { color: tone }]}>{value}</DeckText>
+        <DeckText tone="muted" style={styles.orbLabel}>{suffix ? `${label} ${suffix}` : label}</DeckText>
+      </View>
+    </View>
+  );
+}
+
+export function Sparkline({
+  points,
+  width = 72,
+  height = 34,
+  tone = colors.magenta
+}: {
+  points: number[];
+  width?: number;
+  height?: number;
+  tone?: string;
+}) {
+  const polyline = useMemo(() => {
+    if (points.length === 0) {
+      return "";
+    }
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    return points.map((point, index) => {
+      const x = (index / Math.max(points.length - 1, 1)) * width;
+      const y = height - ((point - min) / range) * (height - 6) - 3;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }, [height, points, width]);
+
+  return (
+    <Svg width={width} height={height}>
+      <Polyline points={polyline} fill="none" stroke={tone} strokeWidth="2" />
+    </Svg>
+  );
+}
+
+export function PriceChart({
+  market,
+  selectedTicker
+}: {
+  market: CommodityMarketState;
+  selectedTicker: string;
+}) {
+  const width = 340;
+  const height = 170;
+  const points = market.history;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const polyline = points.map((point, index) => {
+    const x = 12 + (index / Math.max(points.length - 1, 1)) * (width - 28);
+    const y = 18 + (1 - (point - min) / range) * (height - 38);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  return (
+    <View style={styles.chartBox}>
+      <View style={styles.chartTop}>
+        <DeckText tone="muted" style={styles.chartTitle}>{selectedTicker} LIVE</DeckText>
+        <DeckText tone="cyan" style={styles.chartTitle}>TICK {market.lastTick}</DeckText>
+      </View>
+      <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+        {[0, 1, 2].map((line) => (
+          <Line key={line} x1="12" y1={28 + line * 44} x2={width - 12} y2={28 + line * 44} stroke={colors.lineSoft} strokeWidth="1" />
+        ))}
+        <Polyline points={polyline} fill="none" stroke={colors.cyan} strokeWidth="3" />
+        <Circle cx={width - 22} cy="34" r="4" stroke={colors.magenta} strokeWidth="2" fill="transparent" />
+      </Svg>
+    </View>
+  );
+}
+
+export function CommodityRow({
+  marketState,
+  selected,
+  compact,
+  onPress
+}: {
+  marketState: CommodityMarketState;
+  selected?: boolean;
+  compact?: boolean;
+  onPress?: () => void;
+}) {
+  const commodity = getCommodity(marketState.commodityId);
+  const change = marketState.previousPrice === 0
+    ? 0
+    : ((marketState.currentPrice - marketState.previousPrice) / marketState.previousPrice) * 100;
+  const up = change >= 0;
+
+  return (
+    <Pressable onPress={onPress} style={[styles.commodity, selected && styles.commoditySelected]}>
+      <View style={styles.iconChip}>
+        <DeckText tone={up ? "cyan" : "danger"} style={styles.iconText}>{commodity.icon}</DeckText>
+      </View>
+      <View style={styles.commodityName}>
+        <DeckText tone="white" style={styles.commodityLabel} numberOfLines={1}>{commodity.name.toUpperCase()}</DeckText>
+        {!compact ? <DeckText tone="muted" style={styles.commodityMeta}>{commodity.ticker} / {commodity.rarity}</DeckText> : <Sparkline points={marketState.history.slice(-12)} width={92} height={20} tone={up ? colors.cyan : colors.magenta} />}
+      </View>
+      <View style={styles.priceBlock}>
+        <DeckText tone="white" style={styles.price}>${marketState.currentPrice.toLocaleString()}</DeckText>
+        <DeckText tone={up ? "profit" : "danger"} style={styles.change}>{`${up ? "+" : ""}${change.toFixed(1)}%`}</DeckText>
+      </View>
+    </Pressable>
+  );
+}
+
+export function Scanlines() {
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={styles.vignette} />
+    </View>
+  );
+}
+
+export function TerminalScroll({ children, style }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
+  return (
+    <ScrollView style={style} contentContainerStyle={styles.terminalContent} showsVerticalScrollIndicator={false}>
+      {children}
+    </ScrollView>
+  );
+}
+
+const toneStyles = StyleSheet.create({
+  normal: { color: colors.text },
+  dim: { color: colors.muted },
+  muted: { color: colors.muted },
+  ghost: { color: colors.faint },
+  cyan: { color: colors.cyan },
+  amber: { color: colors.warning },
+  danger: { color: colors.loss },
+  profit: { color: colors.profit },
+  violet: { color: colors.violet },
+  white: { color: colors.text },
+  meta: { color: colors.muted },
+  locked: { color: colors.locked }
+});
+
+const styles = StyleSheet.create({
+  text: {
+    fontFamily: mono,
+    color: colors.text,
+    includeFontPadding: false
+  },
+  panel: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.panel,
+    borderRadius: radii.md,
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  panelActive: {
+    borderColor: colors.cyan,
+    ...glow.cyanBox
+  },
+  panelDanger: {
+    borderColor: colors.magenta,
+    ...glow.magentaBox
+  },
+  panelLocked: {
+    borderColor: colors.locked
+  },
+  panelTitle: {
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: "uppercase"
+  },
+  button: {
+    minHeight: 46,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.sm,
+    backgroundColor: colors.panelSoft
+  },
+  buttonPrimary: {
+    borderColor: colors.magenta,
+    backgroundColor: "#5F0D74",
+    ...glow.magentaBox
+  },
+  buttonDanger: {
+    borderColor: colors.magenta,
+    backgroundColor: "#291024"
+  },
+  buttonAmber: {
+    borderColor: colors.warning,
+    backgroundColor: "#271A0B"
+  },
+  buttonDisabled: {
+    borderColor: colors.locked,
+    backgroundColor: colors.deepNavy
+  },
+  buttonPressed: {
+    opacity: 0.78
+  },
+  buttonText: {
+    fontSize: 13,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    color: colors.text
+  },
+  buttonTextPrimary: {
+    color: colors.text,
+    ...glow.magentaText
+  },
+  buttonTextDanger: {
+    color: colors.magenta
+  },
+  buttonTextAmber: {
+    color: colors.warning
+  },
+  buttonTextDisabled: {
+    color: colors.locked
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: colors.panelSoft
+  },
+  chipText: {
+    fontSize: 10,
+    letterSpacing: 1
+  },
+  meter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  meterLabel: {
+    fontSize: 10,
+    minWidth: 34
+  },
+  meterBar: {
+    fontSize: 12
+  },
+  meterValue: {
+    fontSize: 10,
+    minWidth: 26,
+    textAlign: "right"
+  },
+  orb: {
+    width: 118,
+    height: 118,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  orbText: {
+    position: "absolute",
+    alignItems: "center",
+    gap: 3
+  },
+  orbValue: {
+    fontSize: 29,
+    letterSpacing: 1
+  },
+  orbLabel: {
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase"
+  },
+  chartBox: {
+    width: "100%",
+    minHeight: 210,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    backgroundColor: colors.deepNavy,
+    padding: spacing.md
+  },
+  chartTop: {
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  chartTitle: {
+    fontSize: 10,
+    letterSpacing: 1
+  },
+  commodity: {
+    minHeight: 64,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    backgroundColor: "#090C19",
+    borderRadius: radii.sm,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  commoditySelected: {
+    borderColor: colors.cyan
+  },
+  iconChip: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.panelSoft
+  },
+  iconText: {
+    fontSize: 13
+  },
+  commodityName: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3
+  },
+  commodityLabel: {
+    fontSize: 12,
+    letterSpacing: 0.8
+  },
+  commodityMeta: {
+    fontSize: 10,
+    textTransform: "uppercase"
+  },
+  priceBlock: {
+    alignItems: "flex-end",
+    minWidth: 72
+  },
+  price: {
+    fontSize: 14
+  },
+  change: {
+    fontSize: 11
+  },
+  vignette: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.02)"
+  },
+  terminalContent: {
+    paddingBottom: spacing.xxl
+  }
+});
+
+export const commodityUniverse = COMMODITIES;
