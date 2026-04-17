@@ -1,11 +1,33 @@
+# Dependencies
 node_modules/
+
+# Expo / React Native local state
 .expo/
-dist/
-web-build/
-coverage/
-.test-dist/
-*.log
-.web-serve*.log
-.DS_Store
+.expo-shared/
 android/
 ios/
+
+# Build output and generated test artifacts
+dist/
+web-build/
+.test-dist/
+coverage/
+
+# Vercel local project metadata
+.vercel/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and local server output
+*.log
+.web-serve*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
