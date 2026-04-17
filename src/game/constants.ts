@@ -77,8 +77,8 @@ export const COMMODITIES: Commodity[] = [
     tags: ["coolant", "drone", "raid"]
   },
   {
-    id: "vblm",
-    ticker: "VBLM",
+    id: "vblo",
+    ticker: "VBLO",
     name: "Void Bloom",
     lore: "Fungal code growth that eats dead packets and sells as compute feed.",
     icon: "{#}",
@@ -90,8 +90,8 @@ export const COMMODITIES: Commodity[] = [
     tags: ["bulky", "beginner", "compute"]
   },
   {
-    id: "orrs",
-    ticker: "ORRS",
+    id: "ores",
+    ticker: "ORES",
     name: "Oracle Resin",
     lore: "Predictive resin wafers used by market prophets.",
     icon: "[]",
@@ -103,56 +103,56 @@ export const COMMODITIES: Commodity[] = [
     tags: ["news", "premium", "oracle"]
   },
   {
-    id: "snps",
-    ticker: "SNPS",
-    name: "Synapse Silk",
-    lore: "Threaded neural weave for stealth runners.",
-    icon: "==",
-    basePrice: 920,
-    volatility: 0.1,
+    id: "vtab",
+    ticker: "VTAB",
+    name: "Velvet Tabs",
+    lore: "Illicit soft-interface tabs that make hostile memory edits feel like velvet.",
+    icon: "VT",
+    basePrice: 118,
+    volatility: 0.12,
     size: 2,
     heatRisk: 2,
     rarity: "uncommon",
-    tags: ["stealth", "runner", "route"]
+    tags: ["tab", "memory", "street"]
   },
   {
-    id: "mtrx",
-    ticker: "MTRX",
-    name: "Matrix Salt",
-    lore: "Rare lattice salt for decrypting old city relays.",
-    icon: "::",
-    basePrice: 2600,
-    volatility: 0.13,
+    id: "ndst",
+    ticker: "NDST",
+    name: "Neon Dust",
+    lore: "Powdered signal residue scraped from dead holo-signs and nightclub relays.",
+    icon: "..",
+    basePrice: 97,
+    volatility: 0.17,
     size: 2,
     heatRisk: 2,
-    rarity: "rare",
-    tags: ["decrypt", "relay", "gate"]
-  },
-  {
-    id: "aeth",
-    ticker: "AETH",
-    name: "Aether Tabs",
-    lore: "Temporary perception patches for Eidolon routing models.",
-    icon: "^A",
-    basePrice: 740,
-    volatility: 0.2,
-    size: 1,
-    heatRisk: 2,
     rarity: "volatile",
-    tags: ["pump", "crash", "routing"]
+    tags: ["powder", "signal", "nightlife"]
   },
   {
-    id: "blck",
-    ticker: "BLCK",
-    name: "Blacklight Serum",
-    lore: "Synthetic signal dye for hiding ghost packets.",
-    icon: "#!",
-    basePrice: 3850,
-    volatility: 0.22,
+    id: "pcrt",
+    ticker: "PCRT",
+    name: "Phantom Crates",
+    lore: "Black-market storage cubes whose contents phase in after payment clears.",
+    icon: "[]",
+    basePrice: 409,
+    volatility: 0.1,
+    size: 4,
+    heatRisk: 2,
+    rarity: "uncommon",
+    tags: ["crate", "storage", "phantom"]
+  },
+  {
+    id: "gchp",
+    ticker: "GCHP",
+    name: "Ghost Chips",
+    lore: "Dead-drop memory chips stamped with pirate skull keys.",
+    icon: "☠",
+    basePrice: 2104,
+    volatility: 0.2,
     size: 1,
     heatRisk: 4,
     rarity: "volatile",
-    tags: ["heat", "margin", "evasion"]
+    tags: ["chip", "ghost", "evasion"]
   }
 ];
 
@@ -174,28 +174,28 @@ export const NEWS_TEMPLATES: Omit<MarketNews, "id" | "createdAtTick" | "expiresA
   {
     headline: "Archivist whale opens memory tender",
     body: "Memory shards and resin wafers show synchronized demand.",
-    affectedTickers: ["NGLS", "ORRS"],
+    affectedTickers: ["NGLS", "ORES"],
     direction: "up",
     credibility: 0.68
   },
   {
     headline: "eAgent sweep burns Neon Ward routes",
     body: "High-risk cargo desks are widening spreads under trace pressure.",
-    affectedTickers: ["BLCK", "AETH", "FDST"],
+    affectedTickers: ["GCHP", "PCRT", "FDST"],
     direction: "down",
     credibility: 0.91
   },
   {
     headline: "Helix vat drone strike",
     body: "Coolant demand spikes while cheap compute feed gets dumped.",
-    affectedTickers: ["HXMD", "VBLM"],
+    affectedTickers: ["HXMD", "VBLO"],
     direction: "mixed",
     credibility: 0.77
   },
   {
     headline: "Fake pump exposed",
     body: "A vaporwave signal ring gets caught spoofing retail bots.",
-    affectedTickers: ["AETH"],
+    affectedTickers: ["VTAB", "NDST"],
     direction: "down",
     credibility: 0.48
   }

@@ -1,19 +1,13 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { CommodityGlyph } from "@/components/pirate-os/CommodityGlyph";
+import { PiratePhoneFrame } from "@/components/pirate-os/PiratePhoneFrame";
 import { COMMODITIES } from "@/game/constants";
 import { calculateUnrealizedPnl, capacityUsed, getCommodity, roundMoney } from "@/game/engine";
 import { useGameStore } from "@/game/store";
-import type { TradeType } from "@/game/types";
-import {
-  BracketButton,
-  Chip,
-  CommodityRow,
-  DeckText,
-  Panel,
-  PriceChart,
-  TerminalScroll
-} from "@/ui/primitives";
-import { colors, glow, radii, spacing } from "@/ui/theme";
+import type { CommodityMarketState, TradeType } from "@/game/types";
+import { BracketButton, Chip, CommodityRow, DeckText, Panel, PriceChart } from "@/ui/primitives";
+import { colors, spacing } from "@/ui/theme";
 
 type Props = {
   openMenu: () => void;
@@ -21,7 +15,6 @@ type Props = {
 
 export function SilkroadTerminal({ openMenu }: Props) {
   const { state, selectCommodity, executeTrade, marketTick, navigate } = useGameStore();
-  const { width } = useWindowDimensions();
   const [tradeType, setTradeType] = useState<TradeType>("buy");
   const [quantity, setQuantity] = useState(5);
   const selectedMarket = state.market[state.game.selectedCommodityId];
@@ -31,192 +24,233 @@ export function SilkroadTerminal({ openMenu }: Props) {
   const gross = price * quantity;
   const heatPreview = Math.min(100, (state.resources?.heat ?? 0) + selectedCommodity.heatRisk * quantity * 0.08);
   const unrealized = selectedPosition ? calculateUnrealizedPnl(state, selectedPosition) : 0;
-  const phoneWidth = Math.min(width, 430);
 
   return (
-    <TerminalScroll>
-      <View style={[styles.phone, { maxWidth: phoneWidth }]}>
-        <View style={styles.statusStrip}>
-          <DeckText tone="white" style={styles.statusText}>9:41</DeckText>
-          <DeckText tone="white" style={styles.statusText}>S1LKROAD LIVE</DeckText>
-        </View>
+    <PiratePhoneFrame
+      title="S1LKROAD 4.0"
+      subtitle="LIVE MARKETS // AG3NT_OS"
+      onBack={() => navigate("deck")}
+      onMenu={openMenu}
+      cityBand={false}
+      contentStyle={styles.content}
+    >
+      <TickerRail
+        market={state.market}
+        selectedCommodityId={selectedCommodity.id}
+        onSelect={selectCommodity}
+      />
 
-        <View style={styles.header}>
-          <Pressable onPress={() => navigate("deck")} style={styles.iconButton}>
-            <DeckText tone="cyan">BACK</DeckText>
-          </Pressable>
-          <View style={styles.headerCopy}>
-            <DeckText tone="cyan" style={styles.marketTitle}>S1LKROAD 4.0</DeckText>
-            <DeckText tone="muted" style={styles.eid}>LIVE MARKETS // AG3NT_OS</DeckText>
-          </View>
-          <Pressable onPress={openMenu} style={styles.iconButton}>
-            <DeckText tone="violet">III</DeckText>
-          </Pressable>
-        </View>
-
-        <Panel title="SELECTED CONTRACT" active style={styles.heroCard}>
-          <View style={styles.priceRow}>
-            <View>
+      <Panel title="SELECTED CONTRACT" active style={styles.heroCard}>
+        <View style={styles.priceRow}>
+          <View style={styles.contractLead}>
+            <CommodityGlyph ticker={selectedCommodity.ticker} size={54} active />
+            <View style={styles.contractCopy}>
               <DeckText tone="muted" style={styles.smallLabel}>{selectedCommodity.ticker}</DeckText>
-              <DeckText tone="white" style={styles.contractName}>{selectedCommodity.name.toUpperCase()}</DeckText>
-            </View>
-            <View style={styles.priceBlock}>
-              <DeckText tone="white" style={styles.price}>${price.toLocaleString()}</DeckText>
-              <DeckText tone="cyan" style={styles.smallLabel}>0BOL</DeckText>
+              <DeckText tone="white" style={styles.contractName} numberOfLines={1}>{selectedCommodity.name.toUpperCase()}</DeckText>
             </View>
           </View>
-          <PriceChart market={selectedMarket} selectedTicker={selectedCommodity.ticker} />
-          <DeckText tone="muted" style={styles.lore}>{selectedCommodity.lore}</DeckText>
-        </Panel>
-
-        <View style={styles.sectionHeader}>
-          <DeckText tone="cyan" style={styles.sectionTitle}>WATCHLIST</DeckText>
-          <DeckText tone="muted" style={styles.sectionMeta}>TICK {state.game.marketTick}</DeckText>
+          <View style={styles.priceBlock}>
+            <DeckText tone="white" style={styles.price}>${roundMoney(price).toLocaleString()}</DeckText>
+            <DeckText tone="cyan" style={styles.smallLabel}>0BOL</DeckText>
+          </View>
         </View>
-        <View style={styles.watchlist}>
-          {COMMODITIES.slice(0, 6).map((commodity) => (
-            <CommodityRow
-              key={commodity.id}
-              marketState={state.market[commodity.id]}
-              selected={commodity.id === selectedCommodity.id}
-              compact
-              onPress={() => selectCommodity(commodity.id)}
-            />
-          ))}
-        </View>
+        <PriceChart market={selectedMarket} selectedTicker={selectedCommodity.ticker} />
+        <DeckText tone="muted" style={styles.lore}>{selectedCommodity.lore}</DeckText>
+      </Panel>
 
-        <Panel title="ORDER" danger={tradeType === "sell"} style={styles.ticket}>
-          <View style={styles.toggleRow}>
-            <BracketButton label="BUY" tone={tradeType === "buy" ? "primary" : "normal"} onPress={() => setTradeType("buy")} style={styles.toggleButton} />
-            <BracketButton label="SELL" tone={tradeType === "sell" ? "danger" : "normal"} onPress={() => setTradeType("sell")} style={styles.toggleButton} />
-          </View>
-          <View style={styles.qtyRow}>
-            <BracketButton label="-" onPress={() => setQuantity((value) => Math.max(1, value - 1))} />
-            <DeckText tone="white" style={styles.qty}>{quantity}</DeckText>
-            <BracketButton label="+" onPress={() => setQuantity((value) => Math.min(99, value + 1))} />
-          </View>
-          <View style={styles.ticketLine}>
-            <DeckText tone="muted">TOTAL</DeckText>
-            <DeckText tone="white">{roundMoney(gross).toLocaleString()} 0BOL</DeckText>
-          </View>
-          <View style={styles.ticketLine}>
-            <DeckText tone="muted">HEAT AFTER</DeckText>
-            <DeckText tone={heatPreview > 60 ? "danger" : "violet"}>{Math.round(heatPreview)}%</DeckText>
-          </View>
-          <BracketButton
-            label="EXECUTE TRADE"
-            tone={tradeType === "buy" ? "primary" : "danger"}
-            onPress={() => executeTrade(selectedCommodity.id, quantity, tradeType)}
-            style={styles.execute}
-          />
-        </Panel>
-
-        <Panel title="POSITION">
-          <View style={styles.ticketLine}>
-            <DeckText tone="muted">QTY</DeckText>
-            <DeckText tone="white">{selectedPosition?.quantity ?? 0}</DeckText>
-          </View>
-          <View style={styles.ticketLine}>
-            <DeckText tone="muted">AVG ENTRY</DeckText>
-            <DeckText tone="white">{(selectedPosition?.averageEntry ?? 0).toFixed(2)}</DeckText>
-          </View>
-          <View style={styles.ticketLine}>
-            <DeckText tone="muted">UNREALIZED</DeckText>
-            <DeckText tone={unrealized >= 0 ? "profit" : "danger"}>{unrealized.toFixed(2)} 0BOL</DeckText>
-          </View>
-          <View style={styles.footer}>
-            <Chip label={`CAP ${capacityUsed(state.positions)} / ${state.game.inventoryCapacity}`} tone="muted" />
-            <BracketButton label="MARKET TICK" onPress={marketTick} />
-          </View>
-        </Panel>
+      <View style={styles.sectionHeader}>
+        <DeckText tone="cyan" style={styles.sectionTitle}>WATCHLIST</DeckText>
+        <DeckText tone="muted" style={styles.sectionMeta}>{COMMODITIES.length} ASSETS / TICK {state.game.marketTick}</DeckText>
       </View>
-    </TerminalScroll>
+      <View style={styles.watchlist}>
+        {COMMODITIES.map((commodity) => (
+          <CommodityRow
+            key={commodity.id}
+            marketState={state.market[commodity.id]}
+            selected={commodity.id === selectedCommodity.id}
+            compact
+            onPress={() => selectCommodity(commodity.id)}
+          />
+        ))}
+      </View>
+
+      <Panel title="ORDER" danger={tradeType === "sell"} style={styles.ticket}>
+        <View style={styles.toggleRow}>
+          <BracketButton label="BUY" tone={tradeType === "buy" ? "primary" : "normal"} onPress={() => setTradeType("buy")} style={styles.toggleButton} />
+          <BracketButton label="SELL" tone={tradeType === "sell" ? "danger" : "normal"} onPress={() => setTradeType("sell")} style={styles.toggleButton} />
+        </View>
+        <View style={styles.qtyRow}>
+          <BracketButton label="-" onPress={() => setQuantity((value) => Math.max(1, value - 1))} />
+          <DeckText tone="white" style={styles.qty}>{quantity}</DeckText>
+          <BracketButton label="+" onPress={() => setQuantity((value) => Math.min(99, value + 1))} />
+        </View>
+        <View style={styles.ticketLine}>
+          <DeckText tone="muted" style={styles.smallLabel}>TOTAL</DeckText>
+          <DeckText tone="white">{roundMoney(gross).toLocaleString()} 0BOL</DeckText>
+        </View>
+        <View style={styles.ticketLine}>
+          <DeckText tone="muted" style={styles.smallLabel}>HEAT AFTER</DeckText>
+          <DeckText tone={heatPreview > 60 ? "danger" : "violet"}>{Math.round(heatPreview)}%</DeckText>
+        </View>
+        <BracketButton
+          label="EXECUTE TRADE"
+          tone={tradeType === "buy" ? "primary" : "danger"}
+          onPress={() => executeTrade(selectedCommodity.id, quantity, tradeType)}
+          style={styles.execute}
+        />
+      </Panel>
+
+      <Panel title="POSITION">
+        <View style={styles.ticketLine}>
+          <DeckText tone="muted" style={styles.smallLabel}>QTY</DeckText>
+          <DeckText tone="white">{selectedPosition?.quantity ?? 0}</DeckText>
+        </View>
+        <View style={styles.ticketLine}>
+          <DeckText tone="muted" style={styles.smallLabel}>AVG ENTRY</DeckText>
+          <DeckText tone="white">{(selectedPosition?.averageEntry ?? 0).toFixed(2)}</DeckText>
+        </View>
+        <View style={styles.ticketLine}>
+          <DeckText tone="muted" style={styles.smallLabel}>UNREALIZED</DeckText>
+          <DeckText tone={unrealized >= 0 ? "profit" : "danger"}>{unrealized.toFixed(2)} 0BOL</DeckText>
+        </View>
+        <View style={styles.footer}>
+          <Chip label={`CAP ${capacityUsed(state.positions)} / ${state.game.inventoryCapacity}`} tone="muted" />
+          <BracketButton label="MARKET TICK" onPress={marketTick} />
+        </View>
+      </Panel>
+    </PiratePhoneFrame>
+  );
+}
+
+function TickerRail({
+  market,
+  selectedCommodityId,
+  onSelect
+}: {
+  market: Record<string, CommodityMarketState>;
+  selectedCommodityId: string;
+  onSelect: (commodityId: string) => void;
+}) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tickerRail}>
+      {COMMODITIES.map((commodity) => {
+        const marketState = market[commodity.id];
+        const change = marketState.previousPrice === 0
+          ? 0
+          : ((marketState.currentPrice - marketState.previousPrice) / marketState.previousPrice) * 100;
+        const up = change >= 0;
+        const selected = selectedCommodityId === commodity.id;
+
+        return (
+          <Pressable
+            key={commodity.id}
+            onPress={() => onSelect(commodity.id)}
+            style={[styles.tickerChip, selected && styles.tickerChipSelected]}
+          >
+            <View style={styles.tickerIdentity}>
+              <CommodityGlyph ticker={commodity.ticker} size={26} active={selected || up} />
+              <DeckText tone={selected ? "cyan" : "white"} style={styles.tickerSymbol}>{commodity.ticker}</DeckText>
+            </View>
+            <DeckText tone="muted" style={styles.tickerPrice}>${roundMoney(marketState.currentPrice).toLocaleString()}</DeckText>
+            <DeckText tone={up ? "profit" : "danger"} style={styles.tickerChange}>{`${up ? "+" : ""}${change.toFixed(1)}%`}</DeckText>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  phone: {
-    width: "100%",
-    alignSelf: "center",
-    minHeight: "100%",
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.lg,
-    backgroundColor: colors.voidBlack
-  },
-  statusStrip: {
-    height: 24,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  statusText: {
-    fontSize: 11
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
+  content: {
     gap: spacing.md
   },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0
+  tickerRail: {
+    gap: spacing.sm,
+    paddingRight: spacing.xs
   },
-  marketTitle: {
-    fontSize: 16,
-    letterSpacing: 1.4,
-    ...glow.cyanText
-  },
-  eid: {
-    marginTop: 5,
-    fontSize: 10,
-    letterSpacing: 1
-  },
-  iconButton: {
-    minWidth: 46,
-    height: 40,
-    borderRadius: radii.sm,
+  tickerChip: {
+    minWidth: 86,
+    minHeight: 58,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.lineSoft,
+    borderRadius: 7,
+    backgroundColor: "rgba(7,11,25,0.78)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    justifyContent: "center"
+  },
+  tickerChipSelected: {
+    borderColor: colors.cyan,
+    backgroundColor: "rgba(34,211,238,0.10)"
+  },
+  tickerSymbol: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8
+  },
+  tickerIdentity: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.panel
+    gap: 6
+  },
+  tickerPrice: {
+    marginTop: 4,
+    fontSize: 9
+  },
+  tickerChange: {
+    marginTop: 2,
+    fontSize: 9,
+    fontWeight: "900"
   },
   heroCard: {
     gap: spacing.md
   },
   priceRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md
   },
+  contractLead: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  contractCopy: {
+    flex: 1,
+    minWidth: 0
+  },
   smallLabel: {
     fontSize: 10,
-    letterSpacing: 1
+    letterSpacing: 1,
+    textTransform: "uppercase"
   },
   contractName: {
     marginTop: 5,
-    fontSize: 18,
-    letterSpacing: 1
+    fontSize: 13,
+    letterSpacing: 0.6
   },
   priceBlock: {
     alignItems: "flex-end"
   },
   price: {
-    fontSize: 22
+    fontSize: 17,
+    fontWeight: "900"
   },
   lore: {
-    fontSize: 12,
-    lineHeight: 18
+    fontSize: 11,
+    lineHeight: 17
   },
   sectionHeader: {
+    marginTop: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     letterSpacing: 1.2
   },
   sectionMeta: {
@@ -240,12 +274,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.md
+    gap: spacing.sm
   },
   qty: {
-    minWidth: 76,
+    minWidth: 58,
     textAlign: "center",
-    fontSize: 30
+    fontSize: 28,
+    fontWeight: "900"
   },
   ticketLine: {
     flexDirection: "row",
@@ -253,7 +288,7 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   execute: {
-    minHeight: 56
+    minHeight: 52
   },
   footer: {
     marginTop: spacing.sm,

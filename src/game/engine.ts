@@ -15,6 +15,7 @@ import type {
   Commodity,
   CommodityMarketState,
   GameState,
+  MarketCandle,
   MarketNews,
   Position,
   ScreenId,
@@ -83,23 +84,60 @@ function id(prefix: string, now: number, suffix = 0): string {
   return `${prefix}_${Math.floor(now).toString(36)}_${suffix.toString(36)}`;
 }
 
-function createHistory(basePrice: number, volatility: number, seedOffset: number): number[] {
-  const history: number[] = [];
-  let price = basePrice;
+function createCandles(basePrice: number, volatility: number, seedOffset: number): MarketCandle[] {
+  const candles: MarketCandle[] = [];
+  let open = basePrice;
 
   for (let index = 0; index < MARKET_HISTORY_POINTS; index += 1) {
     const wobble = (seededUnit(index + seedOffset) - 0.5) * volatility * 0.42;
-    const revert = (basePrice - price) / basePrice * 0.08;
-    price = roundMoney(clamp(price * (1 + wobble + revert), basePrice * 0.45, basePrice * 2.75));
-    history.push(price);
+    const revert = (basePrice - open) / basePrice * 0.08;
+    const close = roundMoney(clamp(open * (1 + wobble + revert), basePrice * 0.45, basePrice * 2.75));
+    const wickSeed = seededUnit(index * 19 + seedOffset);
+    const upperWick = Math.max(open, close) * (0.004 + wickSeed * volatility * 0.34);
+    const lowerWick = Math.min(open, close) * (0.004 + (1 - wickSeed) * volatility * 0.3);
+    const high = roundMoney(Math.max(open, close) + upperWick);
+    const low = roundMoney(Math.max(0.01, Math.min(open, close) - lowerWick));
+    const volume = Math.round(900 + seededUnit(index * 23 + seedOffset) * 4200 * (1 + volatility));
+
+    candles.push({
+      tick: index - MARKET_HISTORY_POINTS + 1,
+      open: roundMoney(open),
+      high,
+      low,
+      close,
+      volume
+    });
+    open = close;
   }
 
-  return history;
+  return candles;
+}
+
+function createTickCandle(
+  commodity: Commodity,
+  previousPrice: number,
+  nextPrice: number,
+  nextTick: number
+): MarketCandle {
+  const volatility = commodity.volatility;
+  const wickSeed = seededUnit(nextTick * 41 + commodity.basePrice);
+  const upperWick = Math.max(previousPrice, nextPrice) * (0.003 + wickSeed * volatility * 0.28);
+  const lowerWick = Math.min(previousPrice, nextPrice) * (0.003 + (1 - wickSeed) * volatility * 0.26);
+
+  return {
+    tick: nextTick,
+    open: roundMoney(previousPrice),
+    high: roundMoney(Math.max(previousPrice, nextPrice) + upperWick),
+    low: roundMoney(Math.max(0.01, Math.min(previousPrice, nextPrice) - lowerWick)),
+    close: roundMoney(nextPrice),
+    volume: Math.round(1000 + seededUnit(nextTick * 47 + commodity.size) * 5200 * (1 + volatility))
+  };
 }
 
 export function createInitialMarket(): Record<string, CommodityMarketState> {
   return COMMODITIES.reduce<Record<string, CommodityMarketState>>((market, commodity, index) => {
-    const history = createHistory(commodity.basePrice, commodity.volatility, index + 1);
+    const candles = createCandles(commodity.basePrice, commodity.volatility, index + 1);
+    const history = candles.map((candle) => candle.close);
     const currentPrice = history[history.length - 1] ?? commodity.basePrice;
     const previousPrice = history[history.length - 2] ?? commodity.basePrice;
 
@@ -113,11 +151,53 @@ export function createInitialMarket(): Record<string, CommodityMarketState> {
         liquiditySkew: 1,
         sectorBias: 1
       },
-      history
+      history,
+      candles
     };
 
     return market;
   }, {});
+}
+
+export function normalizeCommodityState(state: GameState): GameState {
+  const canonicalMarket = createInitialMarket();
+  const commodityIds = new Set(COMMODITIES.map((commodity) => commodity.id));
+  const market = COMMODITIES.reduce<Record<string, CommodityMarketState>>((nextMarket, commodity) => {
+    const existing = state.market[commodity.id] as Partial<CommodityMarketState> | undefined;
+    const fallback = canonicalMarket[commodity.id];
+
+    nextMarket[commodity.id] = existing
+      ? {
+          ...fallback,
+          ...existing,
+          commodityId: commodity.id,
+          history: existing.history?.length ? existing.history : fallback.history,
+          candles: existing.candles?.length ? existing.candles : fallback.candles
+        }
+      : fallback;
+
+    return nextMarket;
+  }, {});
+  const positions = Object.entries(state.positions).reduce<Record<string, Position>>((nextPositions, [commodityId, position]) => {
+    if (commodityIds.has(commodityId)) {
+      nextPositions[commodityId] = position;
+    }
+
+    return nextPositions;
+  }, {});
+  const selectedCommodityId = commodityIds.has(state.game.selectedCommodityId)
+    ? state.game.selectedCommodityId
+    : DEFAULT_COMMODITY_ID;
+
+  return {
+    ...state,
+    market,
+    positions,
+    game: {
+      ...state.game,
+      selectedCommodityId
+    }
+  };
 }
 
 export function createInitialGameState(
@@ -165,8 +245,8 @@ export function createInitialGameState(
       {
         id: "seed_neon_ward",
         headline: "Neon Ward desk whispers supply delay",
-        body: "Low-confidence signal says Velvet-style tabs are being relabeled as Aether inventory.",
-        affectedTickers: ["AETH", "FDST"],
+        body: "Low-confidence signal says Velvet Tabs are being relabeled as Phantom Crate inventory.",
+        affectedTickers: ["VTAB", "FDST"],
         direction: "mixed",
         credibility: 0.52,
         createdAtTick: 0,
@@ -252,13 +332,15 @@ export function updateHeat(state: GameState, now = Date.now()): GameState {
 }
 
 export function resolveState(state: GameState, now = Date.now()): GameState {
-  if (!state.resources) {
-    return state;
+  const canonicalState = normalizeCommodityState(state);
+
+  if (!canonicalState.resources) {
+    return canonicalState;
   }
 
-  const elapsedMs = Math.max(0, now - state.resources.lastUpdatedAt);
+  const elapsedMs = Math.max(0, now - canonicalState.resources.lastUpdatedAt);
   const offlineTicks = clamp(Math.floor(elapsedMs / (MARKET_TICK_SECONDS * 1000)), 0, MAX_OFFLINE_TICKS);
-  let resolved = updateEnergy(updateHeat(state, now), now);
+  let resolved = updateEnergy(updateHeat(canonicalState, now), now);
 
   for (let index = 0; index < offlineTicks; index += 1) {
     resolved = applyMarketTick(resolved, now + index);
@@ -278,7 +360,7 @@ function tickerNewsImpact(
     }
 
     const direction = item.direction === "mixed"
-      ? (commodity.ticker === "VBLM" || commodity.ticker === "BLCK" ? -1 : 1)
+      ? (commodity.ticker === "VBLO" || commodity.ticker === "GCHP" ? -1 : 1)
       : item.direction === "up"
         ? 1
         : -1;
@@ -334,6 +416,10 @@ export function applyMarketTick(state: GameState, now = Date.now()): GameState {
     const previousPrice = current;
     const delta = previousPrice === 0 ? 0 : (nextPrice - previousPrice) / previousPrice;
     const history = [...(item?.history ?? []), nextPrice].slice(-MARKET_HISTORY_POINTS);
+    const candles = [
+      ...(item?.candles ?? []),
+      createTickCandle(commodity, previousPrice, nextPrice, nextTick)
+    ].slice(-MARKET_HISTORY_POINTS);
 
     nextMarket[commodity.id] = {
       commodityId: commodity.id,
@@ -345,7 +431,8 @@ export function applyMarketTick(state: GameState, now = Date.now()): GameState {
         liquiditySkew,
         sectorBias
       },
-      history
+      history,
+      candles
     };
   }
 

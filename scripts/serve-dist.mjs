@@ -28,7 +28,11 @@ const server = createServer((req, res) => {
   }
 
   const type = mime[extname(filePath)] ?? "application/octet-stream";
-  res.writeHead(200, { "content-type": type });
+  res.writeHead(200, {
+    "content-type": type,
+    "cache-control": "no-store, max-age=0",
+    "pragma": "no-cache"
+  });
   createReadStream(filePath).pipe(res);
 });
 

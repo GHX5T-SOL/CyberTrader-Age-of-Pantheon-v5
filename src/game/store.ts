@@ -15,6 +15,55 @@ import type { GameState, ScreenId, TradeResult, TradeType, WalletMode } from "./
 
 const STORAGE_KEY = "cybertrader.phase1.state";
 
+const PREVIEW_SCREENS: ScreenId[] = [
+  "deck",
+  "s1lkroad",
+  "profile",
+  "settings",
+  "inventory",
+  "progression",
+  "rank",
+  "leaderboard",
+  "rewards",
+  "notifications",
+  "help",
+  "legal"
+];
+
+function getPreviewScreen(): ScreenId | null {
+  if (typeof globalThis.location === "undefined") {
+    return null;
+  }
+
+  const params = new URLSearchParams(globalThis.location.search);
+  if (params.get("view") !== "pirate") {
+    return null;
+  }
+
+  const requested = params.get("screen") ?? "deck";
+  return PREVIEW_SCREENS.includes(requested as ScreenId) ? requested as ScreenId : "deck";
+}
+
+function forceReviewHome(state: GameState): GameState {
+  if (!state.user) {
+    return state;
+  }
+
+  const previewScreen = getPreviewScreen();
+
+  return {
+    ...state,
+    game: {
+      ...state.game,
+      currentScreen: previewScreen ?? "deck"
+    }
+  };
+}
+
+function wantsPiratePreview() {
+  return getPreviewScreen() !== null;
+}
+
 type GameStore = {
   state: GameState;
   hydrated: boolean;
@@ -52,14 +101,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as GameState;
-        set({ state: resolveState(parsed), hydrated: true });
+        const resolved = resolveState(parsed);
+        const previewState = wantsPiratePreview() && !resolved.user
+          ? createInitialGameState("ghxst.eth", "dev-identity")
+          : resolved;
+        set({ state: forceReviewHome(previewState), hydrated: true });
         return;
       }
     } catch {
       // Corrupt cache should never block the game boot.
     }
 
-    set({ state: createEmptyGameState(), hydrated: true });
+    const initialState = wantsPiratePreview()
+      ? forceReviewHome(createInitialGameState("ghxst.eth", "dev-identity"))
+      : createEmptyGameState();
+
+    set({ state: initialState, hydrated: true });
   },
 
   async reset() {

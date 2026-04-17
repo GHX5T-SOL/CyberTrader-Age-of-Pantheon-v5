@@ -8,7 +8,11 @@ export function TutorialOverlay() {
   const { state, advanceTutorial, navigate, marketTick } = useGameStore();
   const step = state.game.tutorialStep;
 
-  if (step === "complete") {
+  if (typeof globalThis.location !== "undefined" && new URLSearchParams(globalThis.location.search).get("view") === "pirate") {
+    return null;
+  }
+
+  if (step === "complete" || state.game.currentScreen === "deck") {
     return null;
   }
 
@@ -35,14 +39,16 @@ export function TutorialOverlay() {
 const styles = StyleSheet.create({
   overlay: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
+    left: spacing.md,
+    right: spacing.md,
     bottom: spacing.lg,
+    maxWidth: 322,
+    alignSelf: "center",
     minHeight: 54,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: "rgba(12,16,32,0.94)",
+    borderColor: colors.violet,
+    backgroundColor: "rgba(6,10,24,0.94)",
     padding: spacing.sm,
     flexDirection: "row",
     alignItems: "center",

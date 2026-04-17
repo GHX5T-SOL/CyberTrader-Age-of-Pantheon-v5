@@ -1,13 +1,13 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useGameStore } from "@/game/store";
 import { BootScreen } from "@/screens/BootScreen";
 import { IntroScreen } from "@/screens/IntroScreen";
 import { LoginScreen } from "@/screens/LoginScreen";
 import { ModulePage } from "@/screens/ModulePage";
-import { PirateDashboard } from "@/screens/PirateDashboard";
+import PirateOsHomeScreen from "@/screens/PirateOsHomeScreen";
 import { SilkroadTerminal } from "@/screens/SilkroadTerminal";
 import { SystemMenu } from "@/screens/SystemMenu";
 import { Toast } from "@/screens/Toast";
@@ -25,8 +25,19 @@ export default function GameApp() {
 }
 
 function GameRoot() {
-  const { state, hydrated, hydrate, marketTick, toast, clearToast } = useGameStore();
+  const { state, hydrated, hydrate, marketTick, toast, clearToast, navigate, buyEnergy } = useGameStore();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") {
+      return;
+    }
+
+    document.documentElement.style.backgroundColor = colors.voidBlack;
+    document.body.style.backgroundColor = colors.voidBlack;
+    document.body.style.margin = "0";
+    document.body.style.minHeight = "100vh";
+  }, []);
 
   useEffect(() => {
     hydrate();
@@ -75,7 +86,13 @@ function GameRoot() {
     <SafeAreaView style={styles.root}>
       <Scanlines />
       <View style={styles.screen}>
-        {state.game.currentScreen === "deck" ? <PirateDashboard openMenu={() => setMenuOpen(true)} /> : null}
+        {state.game.currentScreen === "deck" ? (
+          <PirateOsHomeScreen
+            onOpenMenu={() => setMenuOpen(true)}
+            onBuyEnergy={() => buyEnergy(6)}
+            onEnterSilkroad={() => navigate("s1lkroad")}
+          />
+        ) : null}
         {state.game.currentScreen === "s1lkroad" ? <SilkroadTerminal openMenu={() => setMenuOpen(true)} /> : null}
         {state.game.currentScreen !== "deck" && state.game.currentScreen !== "s1lkroad" ? (
           <ModulePage screen={state.game.currentScreen} openMenu={() => setMenuOpen(true)} />

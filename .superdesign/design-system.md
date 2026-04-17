@@ -380,3 +380,17 @@ Slide-in from right, 380px wide, full-height, dims main content to 35% behind it
 - All icons inline SVG (no icon library CDN except for edge cases), monochrome, 1px stroke
 - Commodity icons: inline ASCII/SVG glyphs, NOT photos, NOT illustrations
 - ASCII art must be real Unicode text, rendered in a `<pre>` or equivalent monospace block — not a background image
+# Current Locked Visual Target — Pirate OS Mobile Concept
+
+The active target is the user-provided final image dated April 17, 2026: a single premium mobile cyberdeck screen inside a glowing phone frame.
+
+This section supersedes any older ASCII/green-terminal notes below for the current Pirate OS home screen.
+
+- Composition: centered portrait phone shell, narrow playable screen, black outer stage, cyan glow on the left rim, magenta/violet glow on the right rim, subtle floor bloom under the device.
+- Mood: clean black-market cyberdeck, premium neon HUD, restrained glass terminal, readable mobile game UI.
+- Palette: pure black base, dark navy panels, white/off-white primary text, muted blue-gray metadata, cyan for energy/positive/live labels, magenta/pink for heat/negative/signal accents, violet for primary navigation.
+- Layout order: status bar, AG3NT_OS/PIRAT3 identity, Eidolon ID, hamburger button, cityscape upper-half background, side-by-side circular Energy/Heat rings, one Live Signal card, S1LKROAD 4.0 header, exactly three compact market rows, three-button bottom nav, version footer, phone home indicator.
+- Do not add: desktop dashboard chrome, matrix-green overload, large stat strips, wide hero banners, noisy terminal grids, extra cards, factions, territory map, node missions, raids, or 3D map on this Phase 1 home.
+- Rounded geometry: this target uses small rounded phone/UI geometry, not sharp ASCII frames. Borders stay thin and subtle.
+
+---

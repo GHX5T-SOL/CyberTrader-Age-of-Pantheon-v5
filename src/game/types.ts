@@ -75,6 +75,16 @@ export type CommodityMarketState = {
     sectorBias: number;
   };
   history: number[];
+  candles: MarketCandle[];
+};
+
+export type MarketCandle = {
+  tick: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 };
 
 export type Position = {

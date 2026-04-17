@@ -8,6 +8,7 @@ import {
   updateEnergy,
   updateHeat
 } from "../src/game/engine";
+import { COMMODITIES } from "../src/game/constants";
 
 const now = 1_800_000_000_000;
 
@@ -21,6 +22,46 @@ function testInitialPlayer() {
   assert.equal(state.profile?.rankTitle, "Boot Ghost");
   assert.equal(state.currencies?.zeroBol, 1_000_000);
   assert.equal(state.resources?.energyHours, 72);
+}
+
+function testBuildPlanCommodityUniverse() {
+  const tickers = COMMODITIES.map((commodity) => commodity.ticker);
+
+  assert.deepEqual(tickers, [
+    "FDST",
+    "PGAS",
+    "NGLS",
+    "HXMD",
+    "VBLO",
+    "ORES",
+    "VTAB",
+    "NDST",
+    "PCRT",
+    "GCHP"
+  ]);
+}
+
+function testCandlestickMarketData() {
+  const state = createInitialGameState("tester.ai", "dev-identity", now);
+
+  for (const commodity of COMMODITIES) {
+    const market = state.market[commodity.id];
+    const latest = market.candles[market.candles.length - 1];
+
+    assert.ok(market.candles.length > 0);
+    assert.equal(latest.close, market.currentPrice);
+    assert.ok(latest.high >= Math.max(latest.open, latest.close));
+    assert.ok(latest.low <= Math.min(latest.open, latest.close));
+    assert.ok(latest.volume > 0);
+  }
+
+  const ticked = applyMarketTick(state, now);
+  const latestFdst = ticked.market.fdst.candles[ticked.market.fdst.candles.length - 1];
+
+  assert.equal(latestFdst.tick, 1);
+  assert.equal(latestFdst.close, ticked.market.fdst.currentPrice);
+  assert.ok(latestFdst.high >= Math.max(latestFdst.open, latestFdst.close));
+  assert.ok(latestFdst.low <= Math.min(latestFdst.open, latestFdst.close));
 }
 
 function testEnergyDrainAndDormantBlock() {
@@ -97,7 +138,7 @@ function testBuySellPnlAndRank() {
 
 function testInventoryCapacity() {
   const state = createInitialGameState("tester.ai", "dev-identity", now);
-  const result = executeTrade(state, "vblm", 30, "buy", now);
+  const result = executeTrade(state, "vblo", 30, "buy", now);
   assert.equal(result.ok, false);
   assert.match(result.message, /capacity/i);
 }
@@ -118,6 +159,8 @@ function testEnergyPurchase() {
 }
 
 testInitialPlayer();
+testBuildPlanCommodityUniverse();
+testCandlestickMarketData();
 testEnergyDrainAndDormantBlock();
 testHeatDecay();
 testMarketTickDeterminismAndNews();

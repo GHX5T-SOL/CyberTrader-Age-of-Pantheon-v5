@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PiratePhoneFrame } from "@/components/pirate-os/PiratePhoneFrame";
 import { useGameStore } from "@/game/store";
-import { BracketButton, DeckText, Scanlines } from "@/ui/primitives";
-import { colors, shadow, spacing } from "@/ui/theme";
+import { BracketButton, DeckText } from "@/ui/primitives";
+import { colors, glow, spacing } from "@/ui/theme";
 
 export function IntroScreen() {
   const navigate = useGameStore((store) => store.navigate);
@@ -15,82 +15,75 @@ export function IntroScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <Scanlines />
-      <View style={styles.noise}>
-        <DeckText tone="ghost">01001011 01100101 01110000 0x7F3A 11100100 00110101</DeckText>
-      </View>
+    <PiratePhoneFrame title="CYBERTRADER" subtitle="AGE OF PANTHEON" cityBand={false}>
       <View style={styles.center}>
-        <DeckText tone="cyan" style={styles.brand}>CYBERTRADER</DeckText>
+        <DeckText tone="cyan" style={styles.micro}>01001011 01100101 0x7F3A</DeckText>
         <DeckText tone="white" style={styles.title}>AGE OF PANTHEON</DeckText>
-        <DeckText tone="normal" style={styles.flagGlyph}>
-          {"      /########\\\n     /## ____ ##\\\n    |## | oo | ##|\n    |## | -- | ##|\n    |## |____| ##|\n     \\###____###/\n       \\######/\n      BLACK FLAG\n        CURSOR"}
+        <DeckText tone="cyan" style={styles.flagGlyph}>
+          {"     /########\\\n    /## ____ ##\\\n   |## | oo | ##|\n   |## | -- | ##|\n   |## |____| ##|\n    \\###____###/\n      \\######/\n    BLACK FLAG\n      CURSOR"}
         </DeckText>
         <DeckText tone="white" style={styles.loreLine}>
           2077. Pantheon shattered. You are one surviving shard.
         </DeckText>
         <View style={styles.bootLines}>
-          <DeckText tone="dim">{"> ESTABLISHING SYSLINK ....... OK"}</DeckText>
-          <DeckText tone="dim">{"> ROUTING VIA ONION RELAY .... OK"}</DeckText>
-          <DeckText tone="dim">{"> MOUNTING /dev/tty-pantheon . OK"}</DeckText>
-          <DeckText tone="amber">{"> ROOTKIT CHANNEL STABILIZING  LIVE"}</DeckText>
+          <DeckText tone="muted" style={styles.line}>{"> ESTABLISHING SYSLINK .... OK"}</DeckText>
+          <DeckText tone="muted" style={styles.line}>{"> ROUTING VIA ONION RELAY . OK"}</DeckText>
+          <DeckText tone="muted" style={styles.line}>{"> MOUNTING /dev/tty ....... OK"}</DeckText>
+          <DeckText tone="amber" style={styles.line}>{"> ROOTKIT CHANNEL ......... LIVE"}</DeckText>
         </View>
-        <BracketButton label="ENTER SIGNAL" tone="primary" onPress={() => navigate("login")} />
+        <BracketButton label="ENTER SIGNAL" tone="primary" onPress={() => navigate("login")} style={styles.primaryAction} />
+        {canSkip ? <BracketButton label="SKIP" onPress={() => navigate("login")} style={styles.skipAction} /> : null}
       </View>
-      {canSkip ? (
-        <View style={styles.skip}>
-          <BracketButton label="SKIP >>" onPress={() => navigate("login")} />
-        </View>
-      ) : null}
-    </SafeAreaView>
+    </PiratePhoneFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.voidBlack
-  },
-  noise: {
-    padding: spacing.lg,
-    opacity: 0.7
-  },
   center: {
     flex: 1,
+    minHeight: 500,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.xl,
-    gap: spacing.lg
+    gap: spacing.md
   },
-  brand: {
-    fontSize: 18,
-    letterSpacing: 3,
-    ...shadow.cyanGlow
+  micro: {
+    fontSize: 10,
+    letterSpacing: 1.5,
+    opacity: 0.78
   },
   title: {
-    fontSize: 34,
+    fontSize: 25,
+    lineHeight: 30,
     letterSpacing: 3,
-    textAlign: "center"
+    textAlign: "center",
+    ...glow.cyanText
   },
   flagGlyph: {
-    fontSize: 15,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 14,
     textAlign: "center",
-    ...shadow.greenGlow
+    color: colors.cyan
   },
   loreLine: {
-    fontSize: 18,
+    marginTop: spacing.sm,
+    fontSize: 15,
     textAlign: "center",
-    lineHeight: 24
+    lineHeight: 22
   },
   bootLines: {
-    gap: spacing.xs,
     alignSelf: "stretch",
-    maxWidth: 520
+    gap: spacing.xs,
+    marginTop: spacing.md
   },
-  skip: {
-    position: "absolute",
-    right: spacing.lg,
-    bottom: spacing.lg
+  line: {
+    fontSize: 11,
+    lineHeight: 16
+  },
+  primaryAction: {
+    alignSelf: "stretch",
+    marginTop: spacing.md
+  },
+  skipAction: {
+    alignSelf: "stretch"
   }
 });

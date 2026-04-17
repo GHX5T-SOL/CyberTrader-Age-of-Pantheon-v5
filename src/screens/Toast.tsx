@@ -17,9 +17,12 @@ const styles = StyleSheet.create({
     left: spacing.md,
     right: spacing.md,
     bottom: 72,
+    maxWidth: 322,
+    alignSelf: "center",
     borderWidth: 1,
-    borderColor: colors.signalAmber,
-    backgroundColor: colors.voidBlack,
+    borderColor: colors.violet,
+    borderRadius: 10,
+    backgroundColor: "rgba(6,10,24,0.94)",
     padding: spacing.md
   }
 });

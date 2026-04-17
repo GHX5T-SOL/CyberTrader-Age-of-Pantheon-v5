@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useGameStore } from "@/game/store";
 import type { ScreenId } from "@/game/types";
 import { BracketButton, DeckText } from "@/ui/primitives";
-import { colors, spacing } from "@/ui/theme";
+import { colors, glow, spacing } from "@/ui/theme";
 
 const ENTRIES: { key: string; label: string; screen: ScreenId; status: string }[] = [
   { key: "P", label: "Profile", screen: "profile", status: "OK" },
@@ -59,23 +59,29 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.65)"
   },
   panel: {
-    width: "88%",
-    maxWidth: 420,
-    backgroundColor: colors.voidBlack,
+    width: "82%",
+    maxWidth: 310,
+    backgroundColor: "rgba(6,10,24,0.94)",
     borderLeftWidth: 1,
-    borderLeftColor: colors.magenta,
-    padding: spacing.lg,
+    borderLeftColor: colors.violet,
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+    padding: spacing.md,
     gap: spacing.sm
   },
   title: {
-    fontSize: 22,
+    fontSize: 17,
     letterSpacing: 1.5,
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
+    ...glow.cyanText
   },
   row: {
-    minHeight: 48,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.lineSoft,
+    borderRadius: 7,
+    backgroundColor: "rgba(9,13,30,0.70)",
+    paddingHorizontal: spacing.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",

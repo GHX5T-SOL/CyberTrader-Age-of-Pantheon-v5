@@ -11,10 +11,11 @@ import {
   View,
   ViewStyle
 } from "react-native";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
+import { CommodityGlyph } from "@/components/pirate-os/CommodityGlyph";
 import { COMMODITIES } from "@/game/constants";
 import { getCommodity } from "@/game/engine";
-import type { CommodityMarketState } from "@/game/types";
+import type { CommodityMarketState, MarketCandle } from "@/game/types";
 import { colors, glow, radii, spacing } from "./theme";
 
 const mono = Platform.select({ ios: "Courier", android: "monospace", default: "monospace" });
@@ -228,32 +229,93 @@ export function PriceChart({
   selectedTicker: string;
 }) {
   const width = 340;
-  const height = 170;
-  const points = market.history;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  const height = 184;
+  const chartCandles = (market.candles?.length ? market.candles : historyToCandles(market.history)).slice(-18);
+  const min = Math.min(...chartCandles.map((candle) => candle.low));
+  const max = Math.max(...chartCandles.map((candle) => candle.high));
   const range = max - min || 1;
-  const polyline = points.map((point, index) => {
-    const x = 12 + (index / Math.max(points.length - 1, 1)) * (width - 28);
-    const y = 18 + (1 - (point - min) / range) * (height - 38);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
+  const plotLeft = 14;
+  const plotRight = width - 46;
+  const plotTop = 22;
+  const plotBottom = height - 30;
+  const plotWidth = plotRight - plotLeft;
+  const plotHeight = plotBottom - plotTop;
+  const slot = plotWidth / Math.max(chartCandles.length, 1);
+  const candleWidth = Math.max(4, Math.min(9, slot * 0.5));
+  const yFor = (price: number) => plotTop + (1 - (price - min) / range) * plotHeight;
+  const currentY = yFor(market.currentPrice);
+  const volumeMax = Math.max(...chartCandles.map((candle) => candle.volume), 1);
 
   return (
     <View style={styles.chartBox}>
       <View style={styles.chartTop}>
-        <DeckText tone="muted" style={styles.chartTitle}>{selectedTicker} LIVE</DeckText>
+        <DeckText tone="muted" style={styles.chartTitle}>{selectedTicker} OHLC</DeckText>
         <DeckText tone="cyan" style={styles.chartTitle}>TICK {market.lastTick}</DeckText>
       </View>
       <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-        {[0, 1, 2].map((line) => (
-          <Line key={line} x1="12" y1={28 + line * 44} x2={width - 12} y2={28 + line * 44} stroke={colors.lineSoft} strokeWidth="1" />
+        {[0, 1, 2, 3].map((line) => (
+          <Line key={line} x1={plotLeft} y1={plotTop + line * (plotHeight / 3)} x2={plotRight} y2={plotTop + line * (plotHeight / 3)} stroke={colors.lineSoft} strokeWidth="1" />
         ))}
-        <Polyline points={polyline} fill="none" stroke={colors.cyan} strokeWidth="3" />
-        <Circle cx={width - 22} cy="34" r="4" stroke={colors.magenta} strokeWidth="2" fill="transparent" />
+        <Line x1={plotLeft} y1={currentY} x2={plotRight} y2={currentY} stroke="rgba(168,85,247,0.34)" strokeWidth="1" strokeDasharray="4 4" />
+        {chartCandles.map((candle, index) => {
+          const up = candle.close >= candle.open;
+          const tone = up ? colors.cyan : colors.magenta;
+          const x = plotLeft + slot * index + slot / 2;
+          const bodyTop = yFor(Math.max(candle.open, candle.close));
+          const bodyBottom = yFor(Math.min(candle.open, candle.close));
+          const bodyHeight = Math.max(2, bodyBottom - bodyTop);
+          const volumeHeight = Math.max(2, (candle.volume / volumeMax) * 16);
+
+          return (
+            <React.Fragment key={`${candle.tick}-${index}`}>
+              <Line x1={x} y1={yFor(candle.high)} x2={x} y2={yFor(candle.low)} stroke={tone} strokeWidth="1.2" />
+              <Rect
+                x={x - candleWidth / 2}
+                y={bodyTop}
+                width={candleWidth}
+                height={bodyHeight}
+                rx="1"
+                fill={up ? "rgba(34,211,238,0.28)" : "rgba(236,72,153,0.30)"}
+                stroke={tone}
+                strokeWidth="1.2"
+              />
+              <Rect
+                x={x - candleWidth / 2}
+                y={height - 10 - volumeHeight}
+                width={candleWidth}
+                height={volumeHeight}
+                fill={up ? "rgba(34,211,238,0.18)" : "rgba(236,72,153,0.18)"}
+              />
+            </React.Fragment>
+          );
+        })}
+        <Circle cx={plotRight + 4} cy={currentY} r="3.4" stroke={colors.magenta} strokeWidth="1.6" fill="transparent" />
+        <SvgText x={plotRight + 10} y={plotTop + 8} fill={colors.muted} fontSize="9" fontFamily="monospace">
+          {Math.round(max).toLocaleString()}
+        </SvgText>
+        <SvgText x={plotRight + 10} y={plotBottom} fill={colors.muted} fontSize="9" fontFamily="monospace">
+          {Math.round(min).toLocaleString()}
+        </SvgText>
       </Svg>
     </View>
   );
+}
+
+function historyToCandles(history: number[]): MarketCandle[] {
+  return history.map((close, index) => {
+    const open = history[index - 1] ?? close;
+    const high = Math.max(open, close) * 1.015;
+    const low = Math.max(0.01, Math.min(open, close) * 0.985);
+
+    return {
+      tick: index,
+      open,
+      high,
+      low,
+      close,
+      volume: 1000 + index * 80
+    };
+  });
 }
 
 export function CommodityRow({
@@ -275,9 +337,7 @@ export function CommodityRow({
 
   return (
     <Pressable onPress={onPress} style={[styles.commodity, selected && styles.commoditySelected]}>
-      <View style={styles.iconChip}>
-        <DeckText tone={up ? "cyan" : "danger"} style={styles.iconText}>{commodity.icon}</DeckText>
-      </View>
+      <CommodityGlyph ticker={commodity.ticker} size={34} active={selected || up} />
       <View style={styles.commodityName}>
         <DeckText tone="white" style={styles.commodityLabel} numberOfLines={1}>{commodity.name.toUpperCase()}</DeckText>
         {!compact ? <DeckText tone="muted" style={styles.commodityMeta}>{commodity.ticker} / {commodity.rarity}</DeckText> : <Sparkline points={marketState.history.slice(-12)} width={92} height={20} tone={up ? colors.cyan : colors.magenta} />}
@@ -331,8 +391,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.panel,
-    borderRadius: radii.md,
-    padding: spacing.lg,
+    borderRadius: radii.sm,
+    padding: spacing.md,
     gap: spacing.md
   },
   panelActive: {
@@ -352,7 +412,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   },
   button: {
-    minHeight: 46,
+    minHeight: 44,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
@@ -360,20 +420,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radii.sm,
-    backgroundColor: colors.panelSoft
+    backgroundColor: "rgba(9,13,30,0.70)"
   },
   buttonPrimary: {
-    borderColor: colors.magenta,
-    backgroundColor: "#5F0D74",
+    borderColor: colors.violet,
+    backgroundColor: "rgba(109,40,217,0.92)",
     ...glow.magentaBox
   },
   buttonDanger: {
     borderColor: colors.magenta,
-    backgroundColor: "#291024"
+    backgroundColor: "rgba(236,72,153,0.16)"
   },
   buttonAmber: {
     borderColor: colors.warning,
-    backgroundColor: "#271A0B"
+    backgroundColor: "rgba(255,200,87,0.12)"
   },
   buttonDisabled: {
     borderColor: colors.locked,
@@ -383,7 +443,8 @@ const styles = StyleSheet.create({
     opacity: 0.78
   },
   buttonText: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: "900",
     letterSpacing: 1.3,
     textTransform: "uppercase",
     color: colors.text
@@ -455,8 +516,8 @@ const styles = StyleSheet.create({
     minHeight: 210,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radii.md,
-    backgroundColor: colors.deepNavy,
+    borderRadius: radii.sm,
+    backgroundColor: "rgba(3,6,15,0.76)",
     padding: spacing.md
   },
   chartTop: {
@@ -468,12 +529,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1
   },
   commodity: {
-    minHeight: 64,
+    minHeight: 56,
     borderWidth: 1,
     borderColor: colors.lineSoft,
-    backgroundColor: "#090C19",
+    backgroundColor: "rgba(7,11,25,0.78)",
     borderRadius: radii.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md
